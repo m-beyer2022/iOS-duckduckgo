@@ -100,8 +100,8 @@ private struct Panel: View {
                 if verticalSizeClass == .compact {
                     HStack {
                         emailView
-                        qrcodeView
                     }
+                    Spacer()
                 }
 
                 if verticalSizeClass == .regular {
