@@ -40,6 +40,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     private struct ShortcutKey {
         static let clipboard = "com.duckduckgo.mobile.ios.clipboard"
+        static let duckMail = "com.duckduckgo.mobile.ios.duckmail"
     }
 
     private var testing = false
@@ -297,12 +298,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     private func onApplicationLaunch(_ application: UIApplication) {
+        addDynamicShortcuts(application)
         beginAuthentication()
         initialiseBackgroundFetch(application)
         applyAppearanceChanges()
         refreshRemoteMessages()
     }
-    
+
+    private func addDynamicShortcuts(_ application: UIApplication) {
+        application.updateDuckMailShortcut()
+    }
+
     private func applyAppearanceChanges() {
         UILabel.appearance(whenContainedInInstancesOf: [UIAlertController.self]).numberOfLines = 0
     }
@@ -474,6 +480,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         autoClear?.applicationWillMoveToForeground()
         if shortcutItem.type ==  ShortcutKey.clipboard, let query = UIPasteboard.general.string {
             mainViewController?.loadQueryInNewTab(query)
+        } else if shortcutItem.type == UIApplication.duckMailShortcutType, let mainViewController = mainViewController {
+            DuckMailSharingPanel.presentOver(mainViewController)
         }
     }
 
@@ -574,6 +582,25 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             let navigationController = rootViewController.presentedViewController as? UINavigationController
             navigationController?.popToRootViewController(animated: false)
             navigationController?.pushViewController(viewController, animated: true)
+        }
+    }
+
+}
+
+extension UIApplication {
+
+    static let duckMailShortcutType = "DuckMail"
+
+    @MainActor
+    func updateDuckMailShortcut(emailManager: EmailManager = EmailManager()) {
+        shortcutItems?.removeAll(where: { $0.type == Self.duckMailShortcutType })
+        // Dynamic shortcuts are cached
+        if emailManager.isSignedIn {
+            let duckMailShortcut = UIApplicationShortcutItem(type: Self.duckMailShortcutType,
+                                                             localizedTitle: "Generate Duck Mail",
+                                                             localizedSubtitle: "Optional subtitle",
+                                                             icon: .init(templateImageName: "MenuEmail"))
+            shortcutItems?.append(duckMailShortcut)
         }
     }
 

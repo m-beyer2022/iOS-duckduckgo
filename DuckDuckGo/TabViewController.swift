@@ -189,10 +189,14 @@ class TabViewController: UIViewController {
         return activeLink.merge(with: storedLink)
     }
 
+    lazy var emailRequestDelegate: EmailManagerRequestDelegate = {
+        EmailAPIRequestDelegate()
+    }()
+
     lazy var emailManager: EmailManager = {
         let emailManager = EmailManager()
         emailManager.aliasPermissionDelegate = self
-        emailManager.requestDelegate = self
+        emailManager.requestDelegate = emailRequestDelegate
         return emailManager
     }()
     
@@ -2157,56 +2161,6 @@ extension TabViewController: EmailManagerAliasPermissionDelegate {
             self.present(controller: alert, fromView: self.view, atPoint: point)
         }
 
-    }
-
-}
-
-// MARK: - EmailManagerRequestDelegate
-extension TabViewController: EmailManagerRequestDelegate {
-
-    // swiftlint:disable function_parameter_count
-    func emailManager(_ emailManager: EmailManager,
-                      requested url: URL,
-                      method: String,
-                      headers: [String: String],
-                      parameters: [String: String]?,
-                      httpBody: Data?,
-                      timeoutInterval: TimeInterval,
-                      completion: @escaping (Data?, Error?) -> Void) {
-        APIRequest.request(url: url,
-                           method: APIRequest.HTTPMethod(rawValue: method) ?? .post,
-                           parameters: parameters ?? [:],
-                           headers: headers,
-                           httpBody: httpBody,
-                           timeoutInterval: timeoutInterval) { response, error in
-            
-            completion(response?.data, error)
-        }
-    }
-    // swiftlint:enable function_parameter_count
-    
-    func emailManagerKeychainAccessFailed(accessType: EmailKeychainAccessType, error: EmailKeychainAccessError) {
-        var parameters = [
-            PixelParameters.emailKeychainAccessType: accessType.rawValue,
-            PixelParameters.emailKeychainError: error.errorDescription
-        ]
-        
-        if case let .keychainLookupFailure(status) = error {
-            parameters[PixelParameters.emailKeychainKeychainStatus] = String(status)
-            parameters[PixelParameters.emailKeychainKeychainOperation] = "lookup"
-        }
-        
-        if case let .keychainDeleteFailure(status) = error {
-            parameters[PixelParameters.emailKeychainKeychainStatus] = String(status)
-            parameters[PixelParameters.emailKeychainKeychainOperation] = "delete"
-        }
-        
-        if case let .keychainSaveFailure(status) = error {
-            parameters[PixelParameters.emailKeychainKeychainStatus] = String(status)
-            parameters[PixelParameters.emailKeychainKeychainOperation] = "save"
-        }
-        
-        Pixel.fire(pixel: .emailAutofillKeychainError, withAdditionalParameters: parameters)
     }
 
 }
